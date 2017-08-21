@@ -1,7 +1,16 @@
 import numpy as np
 
 class SparseMF:
+    '''
+    Input: Dense Numpy Matrix with NaN values (encoded as numpy NaN), optionally specify a number of latent features, and number of iterations before convergence. Matrix should be centered prior to input. 
+    Output: A complete, optimized utilitiy matrix fit to existing data using gradient descent. '''
     def __init__(self, mat, num_latent=2, n_iterations=100):
+        '''
+        Initializes a U by V decomposition for matrix M.
+        Original matrix is referred to as mat.
+        Three cursor variables are initialized to aide in Gradient Descent
+        Number of latent features and iterations are also customizable.
+        '''
         self.U = np.ones((mat.shape[0], num_latent))
         self.V = np.ones((num_latent, mat.shape[1]))
         self.mat = mat
@@ -28,6 +37,9 @@ class SparseMF:
 
     
     def move_cursor(self):
+        '''
+        Logic for repositioning the cursor during gradient descent. Cursor travels left to right row-wise across U and V matrices, alternating between each matrix.
+        '''
         u_dims = (self.m_shape[0], self.num_latent)
         v_dims = (self.num_latent, self.m_shape[1])
 
@@ -45,7 +57,6 @@ class SparseMF:
             else:
                 self.U_cursor = [0,0]
 
-
         elif self.cursor[0] == 'V':
             self.cursor[0] = 'U'
             self.cursor[1] = self.U_cursor
@@ -62,6 +73,9 @@ class SparseMF:
         
 
     def update(self):
+        '''
+        Defines the actions to be taken to perform a single update to U, V and M matrices. 
+        '''
         if self.cursor[0] == 'U':
             C = self.V[self.cursor[1][1], :]
             u_row = self.U[self.cursor[1][0], :] 
@@ -84,6 +98,7 @@ class SparseMF:
 
 
     def fit(self):
+        ''' Run the update() function n_iterations number of times '''
         for i in xrange(self.n_iterations):
             self.update()
 
@@ -95,6 +110,3 @@ class SparseMF:
 if __name__ == '__main__':
     mat = np.array([[5,2,4,4,3],[3,1,2,4,1],[2,np.nan,3,1,4],[2,5,4,3,5],[4,4,5,4,np.nan]])
     model = SparseMF(mat)
-    print model.U
-    model.update()
-    print model.U
