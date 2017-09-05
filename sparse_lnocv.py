@@ -3,6 +3,13 @@ import random
 from scipy.sparse import lil_matrix, coo_matrix
 
 class MaskData(object):
+    ''' A tool for conducting Leave N Out Cross-Validation on a Sparse Dataset.
+
+    mat: scipy.sparse matrix
+        The database that needs k items removed for validation.
+    k: int
+        The number of datapoints to be removed for validation.
+    '''
     def __init__(self, mat, k):
         self.mat = mat
         self.k = k
@@ -48,12 +55,12 @@ class MaskData(object):
         return self 
 
     def get_test_data(self):
+        ''' Generates a list of user/item pairs of k length to be used for validation '''
         self._mask_find_subset()
         state = self.state
         k = self.k
         r_initial_idx = self.row_idx
         c_initial_idx = self.col_idx
-        #random.seed(state)
         mat = self.mat
         mat = mat.tocoo()
         mat_row, mat_col = mat.row, mat.col
@@ -80,6 +87,10 @@ class MaskData(object):
         return (r_res.astype(int), c_res.astype(int)), x_res
            
     def mask(self):
+        ''' Generates a list of k user/item pairs that meet criteria for use in validation.
+        Returns: list
+            Returns the training data, the original matrix, the test data, and an array of the true ratings for the k data points used for testing.
+        '''    
         self.get_test_data()
         test_data = self.test_data
         original_data = self.original.tocoo()

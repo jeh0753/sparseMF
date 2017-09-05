@@ -4,7 +4,15 @@ from scipy.sparse import csc_matrix
 
 
 class SPLR(object):
-    
+    ''' A new sparse matrix class, Sparse Plus Low Rank as described by Trevor Hastie et al. in their 2009 paper 'Spectral Regularization Algorithms for Learning Large Incomplete Matrices'.
+
+    x: scipy.spares matrix
+        The base sparse matrix.
+    a: 2D array, optional
+        The U portion of an SVD matrix
+    b: 2D array, optional
+        the VD portion of an SVD matrix
+    '''
     def __init__(self, x, a=None, b=None):
         self.x = x
         self.a = a

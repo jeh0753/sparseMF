@@ -27,9 +27,7 @@ from sklearn.base import TransformerMixin
 
 class SparseSoftImputeALS(Solver, TransformerMixin):
     """
-    Implementation of the SoftImpute algorithm from:
-    "Spectral Regularization Algorithms for Learning Large Incomplete Matrices"
-    by Mazumder, Hastie, and Tibshirani.
+    Implementation of the SoftImpute algorithm from: "Spectral Regularization Algorithms for Learning Large Incomplete Matrices" by Mazumder, Hastie, and Tibshirani.
     """
     def __init__(
             self,
@@ -44,14 +42,10 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
         Parameters
         ----------
         shrinkage_value : float
-            Value by which we shrink singular values on each iteration. If
-            omitted then the default value will be the maximum singular
-            value of the initialized matrix (zeros for missing values) divided
-            by 100.
+            Value by which we shrink singular values on each iteration. If omitted then the default value will be the maximum singular value of the initialized matrix (zeros for missing values) divided by 100.
 
         convergence_threshold : float
-            Minimum ration difference between iterations (as a fraction of
-            the Frobenius norm of the current solution) before stopping.
+            Minimum ration difference between iterations (as a fraction of the Frobenius norm of the current solution) before stopping.
 
         max_iters : int
             Maximum number of SVD iterations
@@ -89,7 +83,7 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
         self.X_splr = None
 
     def _fnorm(self, SVD_old, SVD_new):
-        # U, S, V is the order of SVD matrices. This function takes the Frobenius Norm of an SVD decomposed matrix.
+        ''' U, S, V is the order of SVD matrices. This function takes the Frobenius Norm of an SVD decomposed matrix. '''
         U_old, D_sq_old, V_old = SVD_old
         U_new, D_sq_new, V_new = SVD_new
         utu = D_sq_new.dot(U_new.T.dot(U_old))
@@ -101,7 +95,7 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
         return norm
 
     def _converged(self, SVD_old, SVD_new):
-        # U, S, V is the order of SVD matrices. This function takes the Frobenius Norm of an SVD decomposed matrix.
+        ''' U, S, V is the order of SVD matrices. This function takes the Frobenius Norm of an SVD decomposed matrix. '''
         norm = self._fnorm(SVD_old, SVD_new)
         return norm < self.convergence_threshold
 
@@ -110,10 +104,7 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
         return U * np.outer(ones, D)
 
     def _pred_sparse(self, row_id, col_id, X_svd):
-        """This function predicts output for a single row id
-        and column id pair. It returns prediction based on SVD
-        regardless of whether the row, column pair existed in 
-        the original matrix"""
+        """This function predicts output for a single row id and column id pair. It returns prediction based on SVD regardless of whether the row, column pair existed in the original matrix"""
         U, s, V = X_svd
         V = V.T
         res = np.sum(U[row_id]*s*V[:,col_id])
@@ -147,9 +138,9 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
                 compute_uv=True)
 
     def _max_singular_value(self):
-        # quick decomposition of X_filled into rank-1 SVD
+        ''' quick decomposition of X_filled into rank-1 SVD. '''
         X_filled = self.X_fill
-        return X_filled[1][0] #TODO - Replace with self.svd, or rename if we want it to apply for else cond.
+        return X_filled[1][0] 
 
     def _pred_one(self, u, v, row, col):
         u_data = np.expand_dims(u[row,:], 0)
@@ -215,10 +206,15 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
         return self
 
     def solve(self, X, X_original=None):
-        """
-        X : 3-d or 2-d array
-            X is a simple 2-d array if the input is dense. 
-            X is a 3-d array composed of a U matrix, a D singular values array, and a V matrix if the input is sparse.
+        """ Runs the model until convergence or until maximum iterations are completed.
+        X : 3-d array 
+            X is a 3-d array composed of a U matrix, a D singular values array, and a V matrix.
+        
+        X_original: SPLR sparse matrix
+            X_original is the training dataset passed in to the complete function, prior to being filled/processed. 
+           
+        Returns: 1D Array of numpy matrices 
+            The SVD solution that best approximates the true completed X matrix. U x S x V.T is the order of the output.
         """
         self.X_fill = X
         self.X = X_original
@@ -253,7 +249,7 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
             else:
                 self.BD = self._UD(V, Dsq, self.m)
                 x_hat = self._suvc(U, self.BD, irows, icols)
-                self.X_splr.x.data = X_original.data - x_hat # TODO - this may not work if .data isn't a type for the input data source. Also, can the input source data be overwritten like this?
+                self.X_splr.x.data = X_original.data - x_hat
 
             self._als_step()
             converged = self._converged(self.X_fill_old, self.X_fill)
@@ -308,7 +304,8 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
             Consecutive column IDs to be matched to a row ID array of equal length.
             Single integers are also accepted to produce a single prediction.
 
-        Returns: array or integer
+        Returns: array or float
+            The expected rating for the given row_id and col_id pairs
         """
         if isinstance(row_ids, (int, long)) and isinstance(col_ids, (int, long)):
             return self._predict_one(row_ids, col_ids)
@@ -326,13 +323,18 @@ class SparseSoftImputeALS(Solver, TransformerMixin):
     def eval(self):
         """
         Evaluate Root Mean Squared Error of Reconstructed X
+
+        Returns: float
+            The training RMSE of the model.
         """
         xhat = self._xhat_pred()
         x = self.X.data
         mse = mean_squared_error(x, xhat)
         return np.sqrt(mse)
                 
+
 if __name__ == '__main__':
+    # The below code matches the example used in Trevor Hastie's vignette, and allows for a simple check that the output matches expectations.
     x =  np.array([0.86548894, -0.60041722, -0.71692924,  0.69655580,  1.23116102,  0.26644155,  0.01565179, -0.50331812, -0.34232368,  0.14486388,  0.17479031, -0.21190900,  0.55848392, -0.81026875, 0.06437356,  1.54375663, -0.82006429, -0.09754133, -0.13256942, -2.24087863])
     x_idx = np.array([0, 1, 2, 3, 4, 5, 0, 3, 4, 5, 0, 1, 3, 4, 2, 3, 4, 2, 4, 5]) 
     x_p = np.array([0, 6, 10, 14, 17, 20])

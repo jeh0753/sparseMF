@@ -6,13 +6,13 @@ import unittest
 
 
 class TestPredict(unittest.TestCase):
-
+    ''' Unit Tests for the Sparse implementation of SoftImpute '''
     def setUp(self):
         row  = np.array([0, 3, 1, 0, 4])
         col  = np.array([0, 3, 1, 2, 5])
         data = np.array([4, -5, 7, -9, 2])
         self.x = csr_matrix((data, (row, col)), shape=(5, 6))
-        self.si = SoftImpute(fill_method='sparse')
+        self.si = SoftImpute()
         self.x_pred = self.si.complete(self.x)
         self.splr = SPLR(self.si.prepare_input_data(self.x))
 
@@ -22,7 +22,6 @@ class TestPredict(unittest.TestCase):
         and clips max_rank back to an acceptable level, if it is outside
         bounds.
         '''
-        x_prepared = self.si.prepare_input_data(self.x)
         self.assertTrue(len(self.si.missing_mask) == 3) 
         self.assertTrue(self.si.max_rank == 2)
         self.si.max_rank = 10
@@ -52,21 +51,20 @@ class TestPredict(unittest.TestCase):
 
     def test_xhat_pred(self):
         '''
-        Ensures that the first value outputted by _xhat_pred is 
-        equal to the first output from x_result_svd's recomposed 
-        output.
+        Ensures that the first value outputted by _xhat_pred is equal to the first output from x_result_svd's recomposed output.
         '''
         x_result_svd = self.x_pred
         x_dense = x_result_svd[0].dot(np.diag(x_result_svd[1]).dot(x_result_svd[2].T))
-        self.assertAlmostEqual(x_dense[0,0], self.si._xhat_pred(x_result_svd, self.x)[0], places=5)
+        self.assertAlmostEqual(x_dense[0,0], self.si._xhat_pred()[0], places=5)
 
     def test_als_u_step(self):
         '''
         Tests that the output shapes are correct.
         '''
-        V_expected_shape = (6,2)    
+        V_expected_shape = (5,2)    
         D_sq_expected_length = self.si.max_rank
-        output = self.si._als_u_step(self.x_pred, self.splr)
+        self.si._als_u_step()
+        output = self.si.X_fill
         self.assertTrue(len(output[1]) == D_sq_expected_length)
         self.assertTrue(output[0].shape == V_expected_shape)
 
@@ -75,7 +73,8 @@ class TestPredict(unittest.TestCase):
         Tests that the output shapes are correct.
         '''
         us, d_sqs, vs = (5,2), 2, (6,2)
-        output = self.si._als_v_step(self.x_pred, self.splr)
+        self.si._als_v_step()
+        output = self.si.X_fill
         self.assertTrue(output[0].shape == us)
         self.assertTrue(len(output[1]) == 2)
         self.assertTrue(output[2].shape == vs)
@@ -85,7 +84,7 @@ class TestPredict(unittest.TestCase):
         Calculated Frobenius Norm by hand, ensured matching results 
         '''
         output = self.si._fnorm(self.si.fill(self.x), self.x_pred) 
-        expected_output = 120.53 
+        expected_output = 1
         self.assertAlmostEqual(expected_output, output, places=2)
 
     def test_als_cleanup_step(self):
@@ -93,19 +92,18 @@ class TestPredict(unittest.TestCase):
         Tests that the output shapes are correct.
         '''
         Us, D_sqs, Vs = (5,2), 2, (6,2)
-        output = self.si._als_cleanup_step(self.x_pred, self.splr)
+        self.si._als_cleanup_step()
+        output = self.si.X_fill
         self.assertTrue(output[0].shape == Us)
         self.assertTrue(len(output[1]) == 2)
         self.assertTrue(output[2].shape == Vs)
         
     def test_als_step(self):
         '''
-        Ensure that X_fill_svd is updating, and that shapes remain
-        correct.
+        Ensure that X_fill_svd is updating, and that shapes remain correct.
         '''
-        output = self.si._als_step(self.x_pred, self.splr)
         Uo, so, Vo = self.x_pred
-        U, s, V = output
+        U, s, V = self.si.fill(self.x)
         self.assertTrue(U.shape == Uo.shape)
         self.assertTrue(V.shape == Vo.shape)
         self.assertFalse(np.all(s == so))
@@ -118,7 +116,7 @@ class TestPredict(unittest.TestCase):
         '''
         output = self.si.solve(self.x_pred, self.x)
         U, s, V = output
-        Uo, so, Vo = self.x_pred
+        Uo, so, Vo = self.si.fill(self.x)
 
         self.assertTrue(U.shape == Uo.shape)
         self.assertTrue(V.shape == Vo.shape)
@@ -137,7 +135,7 @@ class TestPredict(unittest.TestCase):
         col_ids = np.array([0, 3, 5, 2])
         row_ids = np.array([0, 3, 4, 0])
         expected = np.array([4, -5, 2, -9])
-        self.assertTrue(np.all(self.si.predict_many(row_ids, col_ids) == expected))
+        self.assertTrue(np.all(self.si.predict(row_ids, col_ids) == expected))
 
         #col_ids = np.array([1,2,1,1,4])
         #row_ids = np.array([2,1,1,3,4])

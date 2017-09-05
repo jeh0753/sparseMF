@@ -16,6 +16,7 @@ from bench_gridsearch_pipeline import SIGrid, GLGrid
 from sparse_lnocv import MaskData
 
 def load_movielens(path, leave_n_out=3, sample=500, seed=0):
+    ''' Creates a coo_matrix from the MovieLens Datset, and conducts a LNOCV train test split. '''
     np.random.seed(seed)
     df = pd.read_csv(path).sample(sample, random_state=2)   
     n = len(df)
@@ -28,26 +29,27 @@ def load_movielens(path, leave_n_out=3, sample=500, seed=0):
     return train, test, test_data_points, test_results 
 
 def gALS_predict(train, test_data_points, max_iters=50, max_rank=8, sgd_step_size=0, regularization=1e-08, linear_regularization=1e-10):
+    ''' Generates GraphLab predictions using the inbuilt Factorization Recommender. '''
     c = coo_matrix(train)
     sf = graphlab.SFrame({'row': c.row, 'col': c.col, 'data': c.data})
     sf_small = sf.dropna('data', how="all")
     sf_topredict = graphlab.SFrame({'row': test_data_points[0], 'col': test_data_points[1]})
     #sgd_step_size of zero means GL is tuning this automatically
-    #num_factors and the regularization parameters are the default
     m1 = graphlab.factorization_recommender.create(sf_small, user_id='row', item_id='col', solver='als', max_iterations=max_iters, num_factors=max_rank, regularization=regularization, linear_regularization=linear_regularization, sgd_step_size=sgd_step_size, target='data', verbose=False)
     spred = m1.predict(sf_topredict)
     pred = spred.to_numpy()
     return pred
 
 def softALS_predict(train, test_data_points, max_rank=8, shrinkage_value=.02, max_iters=50, convergence_threshold=1e-05):
+    ''' Generates SoftImputeALS predictions. '''
     train = csr_matrix(train)
-    # I lowered the convergence threshold to see if that strengthened the model
     si = SparseSoftImputeALS(max_rank=max_rank, shrinkage_value=shrinkage_value, max_iters=max_iters, convergence_threshold=convergence_threshold, verbose=True)
     si.complete(train)
     pred = si.predict(test_data_points[0], test_data_points[1]) 
     return pred
 
 def fancy_biscale(train):
+    ''' FancyImpute's inbuilt scaling/centering features did not support data of this level of sparsity. This function translates the training data to a centered format for inclusion in the FancyImpute model. '''
     train = csr_matrix(train)
     sb = SBiScale()
     train = sb.fit(train)
@@ -58,6 +60,7 @@ def fancy_biscale(train):
     return train.toarray(), rowscale, colscale, rowcenter, colcenter
 
 def fancy_remove_biscale(y, rowscale, colscale, rowcenter, colcenter):
+    ''' FancyImpute's inbuilt scaling/centering features did not support data of this level of sparsity. This function translates the training data from the centered format required by FancyImpute back to proper format for generating predictions. '''
     result = np.empty(len(y))
     for i, (prediction, row_id, col_id) in enumerate(y):
         scaled = prediction * rowscale[row_id] * colscale[col_id]
@@ -66,6 +69,7 @@ def fancy_remove_biscale(y, rowscale, colscale, rowcenter, colcenter):
     return result
 
 def fancy_predict(train, test_data_points, max_rank=8, shrinkage_value=0.02, max_iters=50):
+    ''' Generates predictions for test data points using FancyImpute's dense implementation of SoftImpute. '''
     train, rowscale, colscale, rowcenter, colcenter = fancy_biscale(train)
     train[train == 0] = np.nan
     si = SoftImpute(shrinkage_value=shrinkage_value, max_rank=max_rank, max_iters=max_iters, init_fill_method='zero', verbose=False)
@@ -78,6 +82,7 @@ def fancy_predict(train, test_data_points, max_rank=8, shrinkage_value=0.02, max
     return res
     
 def iter_bench(path='movielens.csv', n_iter=1, leave_n_out=3, sample=1000):
+    ''' Runs the benchmarking process to test code according to code below. '''
     it = 0
     results = defaultdict(lambda: [])
 
@@ -86,7 +91,6 @@ def iter_bench(path='movielens.csv', n_iter=1, leave_n_out=3, sample=1000):
         # confirmed level of sparsity is kept constant but datapoints selected change
         # be careful to have a large enough sample size that the same pairs aren't left out repeatedly
 
-        # tuned parameters for SoftImpute on this training set. Graphlab does the equivalent in its actual algorithm
         #si_params = SIGrid(train)
         #gl_params = GLGrid(train)
 
@@ -132,6 +136,7 @@ def iter_bench(path='movielens.csv', n_iter=1, leave_n_out=3, sample=1000):
     return results, train, test_data_points, test_results #, si_params#, gl_params
 
 def compute_avgs(results, mse=defaultdict(list), time=defaultdict(list)):
+    ''' Averages the output from the iter_bench function, for the purposes of plotting. '''
     mse = mse
     time = time 
     for k, v in results.iteritems():
@@ -168,6 +173,7 @@ def plot_iters_time(results):
 
 
 def plot_change(results):
+    ''' This plot shows how each algorithm changes after each iteration. '''
     f, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
     n_range = np.linspace(0, 50, 11)
     model_names = results[0].keys()
@@ -178,7 +184,6 @@ def plot_change(results):
         else:
             ax1.plot(n_range, np.insert(np.absolute(np.diff(results[0][model])), 0, results[0][model][0]), label=model)
             ax2.plot(n_range, np.insert(np.absolute(np.diff(results[1][model])), 0, results[1][model][0]), label=model)
-    #plt.set_title("Iterations to Convergence")
     ax1.set_title('Root Mean Squared Error')
     ax2.set_title('Time in Seconds')
     plt.xlabel('Number of Iterations')
@@ -186,7 +191,7 @@ def plot_change(results):
     plt.show()
 
 def plot_RMSE_iters(results):
-    ''' This plot shows how my algorithm compares to GraphLab in terms of RMSE '''
+    ''' This plot shows how the SoftImputeALS algorithm compares to GraphLab in terms of RMSE '''
     f, (ax) = plt.subplots(1, 1)
     n_range = np.linspace(0, 50, 11)
     model_names = results[0].keys()
@@ -201,24 +206,4 @@ def plot_RMSE_iters(results):
     plt.show()
 
 if __name__ == '__main__':
-   # results, train, test = compute_bench('movielens.csv', n_iter=3)
-   # plot_results(results)
-    #path = 'movielens.csv'
-
-    #train, test, test_data_points, test_results = load_movielens(path, seed=0, leave_n_out=3, sample=10000)
-    #si_params = SIGrid(train)
     results, train, test_data_points, test = iter_bench()
-    #param_backup = (si_params, gl_params)
-    #backup = results.copy()
-    #avg = compute_avgs(results)
-    #plot_over_samples(path)
-    #train, test, testdatapoints, _ = load_movielens(path, sample=1000)
-    #print gpredict(train, testdatapoints)
-    #train = train.toarray()
-    #bis = biscale(train)
-    #print my_predict(train, testdatapoints)
-    #bis_masked = bis * (train != 0)
-    #cbis = csr_matrix(bis_masked)
-    #print gpredict(train, testdatapoints)
-    #print my_predict(train, testdatapoints)
-    #print bis

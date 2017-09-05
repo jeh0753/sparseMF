@@ -10,20 +10,8 @@ from sklearn.metrics import mean_squared_error
 from bench_plot_sparse_mf import MaskData
 
 
-def load_movielens(path, leave_n_out=3, sample=1000, seed=0):
-    np.random.seed(seed)
-    df = pd.read_csv(path).sample(sample, random_state=2)   
-    n = len(df)
-    row = np.array(df.userId)
-    col = np.array(df.movieId)
-    data = np.array(df.rating)
-    mat = coo_matrix((data, (row, col)))
-    masker = MaskData(mat, leave_n_out)
-    train, test, test_data_points, test_results = masker.mask()
-    return train, test, test_data_points, test_results 
-
-
 class CustomMixin(TransformerMixin):
+    ''' This class extends TransformerMixin to include get_params and set_params, as required by GridSearchCV '''
     def get_params(self, **kwargs):
         return dict()
 
@@ -33,6 +21,7 @@ class CustomMixin(TransformerMixin):
         return self
 
 class SparseALS(CustomMixin):
+    ''' Used exclusively for GridSearchCV, this class converts SparseSoftImputeALS into a Mixin that conforms to the requirements of scikit-learn's GridSearchCV'''
     def __init__(self, shrinkage_value=0.02, max_rank=3):
         self.max_rank = max_rank
         self.shrinkage_value = shrinkage_value
@@ -51,12 +40,10 @@ class SparseALS(CustomMixin):
         for i, (r, c, _) in enumerate(X):
             row[i] = r 
             col[i]  = c
-        #import ipdb; ipdb.set_trace()
         train = csr_matrix( (data,(row,col)), shape=shape)
         self.si = SparseSoftImputeALS(max_rank=self.max_rank, shrinkage_value=self.shrinkage_value, max_iters=30, verbose=False)
         self.si.complete(train)
         return self
-        #print(si._pred_sparse(test_data_points[0], test_data_points[1], si.X_filled))
     
     def transform(self, X):
         row = np.empty(len(X))
@@ -79,6 +66,14 @@ class SparseALS(CustomMixin):
         return pred
 
 def SIGrid(train):
+    ''' Function for obtaining the optimal SoftImpute parameters for a given dataset.
+
+    train: scipy.sparse.coo_matrix
+        The dataset used for grid searching the best parameters.
+
+    Returns: dict
+        Dictionary of the best SoftImpute parameters for the given dataset.
+    '''
     params = dict(max_rank=[10, 20], shrinkage_value=[.02, 10])
     grid = GridSearchCV(SparseALS(), cv=3, n_jobs=1, scoring="mean_squared_error", param_grid=params)
     x = zip(train.row, train.col, [train.shape]*len(train.row))
@@ -87,6 +82,14 @@ def SIGrid(train):
     return grid.best_params_
       
 def GLGrid(train):
+    ''' Function for obtaining the optimal GraphLab Factorization Recommender parameters for a given dataset.
+
+    train: scipy.sparse.coo_matrix
+        The dataset used for grid searching the best parameters.
+
+    Returns: dict
+        Dictionary of the best GraphLab parameters for the given dataset.
+    '''    
     c = coo_matrix(train)
     sf = graphlab.SFrame({'row': c.row, 'col': c.col, 'data': c.data})
     sf_small = sf.dropna('data', how="all")
@@ -96,9 +99,4 @@ def GLGrid(train):
     params = job.get_best_params() 
     return params
 
-if __name__ == '__main__':
-    path = 'movielens.csv'
-    train, test, testdatapoints,test_results = load_movielens(path)
-    grid =  SIGrid(train)
-    
         

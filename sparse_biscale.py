@@ -1,8 +1,18 @@
 import numpy as np 
 from scipy.sparse import coo_matrix, csr_matrix, csc_matrix
-    
+
 
 class SBiScale(object):
+    ''' A sparse approach to scaling and centering, row-wise and column-wise, for input to a SoftImpute algorithm. 
+        maxit: int
+            the maximum number of iterations allowed for obtaining the ideal scaling and centering levels.
+        thresh: int
+            the threshold for convergence
+        row_center, row_scale, col_center, col_scale: bool
+            a boolean indicating whether or not the task should be completed.
+        trace: bool
+            whether or not a verbose output should be provided.
+        '''    
     def __init__(self, maxit=20, thresh=1e-9, row_center=True, row_scale=False, col_center=True, col_scale=False, trace=False):
         self.maxit = maxit
         self.thresh = 1e-9
@@ -74,6 +84,13 @@ class SBiScale(object):
         return self
 
     def fit(self, x):
+        ''' Fits data to provide ideal scaling/centering levels. Runs until convergence is achieved or maximum iterations are reached.
+        x: scipy.sparse matrix type
+            The data to fit.
+        
+        Returns: scipy.sparse type matrix
+            The scaled/centered matrix.
+        '''    
         self._add_variables(x)
         self._center_scale_I()
         for i in xrange(self.maxit):
@@ -101,7 +118,7 @@ class SBiScale(object):
             else:
                 dalpha = 0 
         
-            #Leaving out scaling for now; does not appear to be used for my purposes
+            #Leaving out scaling for now; not required for SoftImputeALS algorithm 
             dalpha[np.isnan(dalpha)] = 0
             dbeta[np.isnan(dbeta)] = 0
             convergence_level = np.square(dalpha).sum() + np.square(dbeta).sum()
@@ -120,7 +137,7 @@ class SBiScale(object):
         return result
 
     def transform(self, X, row_id, col_id, prediction):
-        ''' Takes a single predicted value, and returns the scaled and centered version.'''
+        ''' Takes a single predicted value, and returns the scaled and centered data point.'''
         scaled = prediction * X.row_scale[row_id] * X.col_scale[col_id]
         centered = scaled + X.row_center[row_id] + X.col_center[col_id]
         return centered
