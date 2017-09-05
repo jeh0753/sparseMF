@@ -13,6 +13,7 @@ class SparseMF:
         '''
         self.U = np.ones((mat.shape[0], num_latent))
         self.V = np.ones((num_latent, mat.shape[1]))
+        mat[np.isnan(mat)] = np.nan
         self.mat = mat
         self.m_shape = self.mat.shape
         self.M = self.U.dot(self.V)
@@ -33,7 +34,7 @@ class SparseMF:
         y = np.delete(y, nan_index)
         C = np.delete(C, nan_index)
         D = np.delete(D, nan_index)
-        return np.sum(C.dot(y-D))/np.sum(C**2)
+        return float(np.sum(C.dot(y-D)))/np.sum(C**2)
 
     
     def move_cursor(self):
@@ -109,4 +110,6 @@ class SparseMF:
 
 if __name__ == '__main__':
     mat = np.array([[5,2,4,4,3],[3,1,2,4,1],[2,np.nan,3,1,4],[2,5,4,3,5],[4,4,5,4,np.nan]])
-    model = SparseMF(mat)
+    model = sparsemf(mat)
+    model.fit()
+    print model.M
