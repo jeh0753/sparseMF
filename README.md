@@ -27,8 +27,8 @@ model.predict( [users], [items] )
 ## Relative Speed
 
 Here is how the speed of SparseMF stacks up against GraphLab and FancyImpute:
-![Speed Check]('./imgs/speed_tests.png' "Speed Check")
 
+![](imgs/speed_tests.png)
 
 ## Other Package Contents
 
