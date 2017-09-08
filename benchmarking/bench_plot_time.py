@@ -161,12 +161,14 @@ def plot_iters_time(results):
     n_range = np.linspace(0, 5, 6)
     model_names = results[0].keys()
     for idx in xrange(len(model_names)): 
-        logtime =  np.log(results[1][model_names[idx]])
+        #logtime =  np.log(results[1][model_names[idx]])
+        logtime =  np.sqrt(results[1][model_names[idx]])
         logtime = np.insert(logtime, 0, 0)
         ax.plot(n_range, logtime, label=model_names[idx])
 
     ax.set_title("Speed of Model")
-    plt.ylabel('Time in Log Seconds')
+    #plt.ylabel('Time in Log Seconds')
+    plt.ylabel('Time in Seconds')
     plt.xlabel('Number of Iterations')
     plt.legend()
     plt.show()

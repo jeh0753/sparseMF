@@ -63,7 +63,7 @@ def fancy_biscale(train):
     return train.toarray(), rowscale, colscale, rowcenter, colcenter
 
 def fancy_remove_biscale(y, rowscale, colscale, rowcenter, colcenter):
-    ''' FancyImpute's inbuilt scaling/centering features did not support data of this level of sparsity. This function translates the training data from the centered format required by FancyImpute back to proper format for generating predictions. '''
+    ''' fancyimpute's inbuilt scaling/centering features did not support data of this level of sparsity. this function translates the training data from the centered format required by fancyimpute back to proper format for generating predictions. '''
     result = np.empty(len(y))
     for i, (prediction, row_id, col_id) in enumerate(y):
         scaled = prediction * rowscale[row_id] * colscale[col_id]
@@ -86,7 +86,7 @@ def fancy_predict(train, test_data_points, max_rank=8, shrinkage_value=0.02, max
     train_rmse = np.sqrt(np.mean(np.abs(train[mask] - complete[mask])**2)) 
     return res, train_rmse
     
-def iter_bench(path='movielens.csv', n_iter=1, leave_n_out=3, sample=1000):
+def iter_bench(path='movielens.csv', n_iter=100, leave_n_out=3, sample=10000):
     ''' Runs the benchmarking process to test code according to code below. '''
     it = 0
     results = defaultdict(lambda: [])
@@ -97,26 +97,26 @@ def iter_bench(path='movielens.csv', n_iter=1, leave_n_out=3, sample=1000):
         # be careful to have a large enough sample size that the same pairs aren't left out repeatedly
 
         # tuned parameters for SoftImpute on this training set. Graphlab does the equivalent in its actual algorithm
-        #si_params = SIGrid(train)
-        #gl_params = GLGrid(train)
+        si_params = SIGrid(train)
+        gl_params = GLGrid(train)
 
         it += 1
         print('====================')
         print('LNOCV Iteration %03d of %03d' % (idx+1, n_iter))
         print('====================')
         inner_it = 0
-        for i in xrange(0, 5):
+        for i in xrange(0, 1):
             inner_it += 1
             if idx == 0:
                 results['GraphLabALS'].append([])
                 results['SoftImputeALS'].append([])
-                results['FancyImpute'].append([])
+                #results['FancyImpute'].append([])
 
             t2 = train.copy()
             gc.collect()
             print("benchmarking GraphLabALS: ")
             tstart = time()
-            pred, train_rmse = gALS_predict(t2, test_data_points, max_rank=i+1, sgd_step_size=0.02, max_iters=10)
+            pred, train_rmse = gALS_predict(t2, test_data_points, max_rank=gl_params['num_factors'], sgd_step_size=gl_params['sgd_step_size'], max_iters=8)
             #pred = gALS_predict(t2, test_data_points, max_rank=gl_params['num_factors'], sgd_step_size=gl_params['sgd_step_size'], max_iters=i+1)
             mse = mean_squared_error(test_results, pred)
             results['GraphLabALS'][inner_it-1].append((time() - tstart, mse, train_rmse))
@@ -125,21 +125,21 @@ def iter_bench(path='movielens.csv', n_iter=1, leave_n_out=3, sample=1000):
             gc.collect()
             print("benchmarking SoftImputeALS: ")
             tstart = time()
-            pred, train_rmse = softALS_predict(t4, test_data_points, max_rank=i+1, shrinkage_value=9, max_iters=10)
+            pred, train_rmse = softALS_predict(t4, test_data_points, max_rank=si_params['max_rank'], shrinkage_value=si_params['shrinkage_value'], max_iters=8)
             #pred = softALS_predict(t4, test_data_points, max_rank=si_params['max_rank'], shrinkage_value=si_params['shrinkage_value'], max_iters=i+1)
             mse = mean_squared_error(test_results, pred)
             results['SoftImputeALS'][inner_it-1].append((time() - tstart, mse, train_rmse))
            
-            t3 = train.copy()
-            gc.collect()
-            print("benchmarking FancyImpute: ")
-            tstart = time()
-            pred, train_rmse = fancy_predict(t3, test_data_points, max_rank=i+1, shrinkage_value=9, max_iters=4)
-            #pred = fancy_predict(t3, test_data_points, max_rank=si_params['max_rank'], shrinkage_value=si_params['shrinkage_value'], max_iters=i+1)
-            mse = mean_squared_error(test_results, pred)
-            results['FancyImpute'][inner_it-1].append((time() - tstart, mse, train_rmse))
+            #t3 = train.copy()
+            #gc.collect()
+            #print("benchmarking FancyImpute: ")
+            #tstart = time()
+            #pred, train_rmse = fancy_predict(t3, test_data_points, max_rank=si_params['max_rank'], shrinkage_value=si_params['shrinkage_value'], max_iters=5)
+            ##pred = fancy_predict(t3, test_data_points, max_rank=si_params['max_rank'], shrinkage_value=si_params['shrinkage_value'], max_iters=i+1)
+            #mse = mean_squared_error(test_results, pred)
+            #results['FancyImpute'][inner_it-1].append((time() - tstart, mse, train_rmse))
 
-    return results, train, test_data_points, test_results #, si_params#, gl_params
+    return results, train, test_data_points, test_results, si_params, gl_params
 
 def compute_avgs(results, rmse=defaultdict(list), time=defaultdict(list), train_rmse=defaultdict(list)):
     ''' Averages the output from the iter_bench function, for the purposes of plotting. '''
@@ -166,19 +166,42 @@ def compute_avgs(results, rmse=defaultdict(list), time=defaultdict(list), train_
     return rmse, time, train_rmse
 
 def plot_RMSE_iters(results):
-    ''' This plot shows how the SoftImputeALS algorithm compares to GraphLab in terms of RMSE '''
+    ''' this plot shows how the softimputeals algorithm compares to graphlab in terms of rmse '''
     f, (ax) = plt.subplots(1, 1)
-    n_range = np.linspace(0, 50, 11)
+    n_range = np.linspace(0, 10, 10)
     model_names = results[0].keys()
     model_range = range(len(model_names))
     for idx, model in enumerate(model_names): 
-        ax.plot(n_range, results[0][model], label=model)
+        if idx ==0:
+            pass
+        else:
+            ax.plot(n_range+1, results[0][model], label=str(model)+' cross-validated RMSE')
+    for idx, model in enumerate(model_names):
+        if idx ==0:
+            pass
+        else:
+            ax.plot(n_range+1, results[2][model], label=str(model)+' training RMSE')
     ax.set_title("Iterations to Convergence")
     plt.ylabel('Root Mean Squared Error')
-    plt.xlabel('Number of Iterations')
-    plt.ylim(0, 0.5)
+    plt.xlabel('Max Rank')
     plt.legend()
     plt.show()
 
+def bar_RMSE_iters(results):
+    ''' this plot shows how the softimputeals algorithm compares to graphlab in terms of rmse '''
+    f, (ax) = plt.subplots(1, 1)
+    n_range = np.linspace(0, 10, 10)
+    model_names = results[0].keys()
+    model_range = range(len(model_names))
+    for idx, model in enumerate(model_names): 
+        if idx ==0:
+            pass
+        else:
+            ax.bar(n_range, results[0][model], label=str(model)+' cross-validated RMSE')
+    ax.set_title("")
+    plt.ylabel('Root Mean Squared Error')
+    plt.xlabel('Max Rank')
+    plt.legend()
+    plt.show()
 if __name__ == '__main__':
-    results, train, test_data_points, test = iter_bench()
+    results, train, test_data_points, test, si_params, gi_params = iter_bench()

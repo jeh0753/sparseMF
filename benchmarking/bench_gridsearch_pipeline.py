@@ -7,7 +7,7 @@ from scipy.sparse import csr_matrix, csc_matrix, coo_matrix, issparse
 from sklearn.pipeline import Pipeline
 from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error
-from bench_plot_sparse_mf import MaskData
+from sparse_lnocv import MaskData
 
 
 class CustomMixin(TransformerMixin):
