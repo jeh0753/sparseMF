@@ -1,6 +1,6 @@
 # sparseMF
 
-SparseMF is a matrix factorization recommender written in Python, which runs on top of NumPy and SciPy. It was developed with a focus on speed, and highly sparse matrices.
+SparseMF is a matrix factorization recommender written in Python, which runs on top of NumPy and SciPy. It was developed with a focus on speed, and highly sparse matrices. The package is available via pip.
 
 Use SparseMF if you need a recommender that:
 
@@ -13,10 +13,16 @@ This repo introduces two sparse matrix factorization algorithms. The algorithms 
 
 ## Getting Started
 
-SparseMF is simple to use. Choose the algorithm you would like to import, `SoftImpute` or `SoftImputeALS` and use it as follows:
+SparseMF is simple to use. First, install the package via pip:
+
+```
+pip install sparsemf
+```
+
+Next, choose the algorithm you would like to import, `SoftImpute` or `SoftImputeALS` and use it as follows:
 
 ```python
-from softimpute import SoftImpute
+from sparsemf import SoftImpute
 
 model = SoftImpute()
 X = my_data
@@ -32,9 +38,13 @@ Here is how the speed of SparseMF stacks up against GraphLab and FancyImpute:
 
 ## Other Package Contents
 
-In addition to these algorithms, the package also includes:
+In addition to these 'SoftImpute' and 'SoftImputeALS', the package also includes:
 
-* A new sparse matrix class, entitled Sparse Plus Low Rank (SPLR), as described in the 2009 paper ['Spectral Regularization Algorithms for Learning Large Incomplete Matrices'](https://web.stanford.edu/~hastie/Papers/mazumder10a.pdf).
+* 'SPLR' - A new sparse matrix class, entitled Sparse Plus Low Rank (SPLR), as described in the 2009 paper ['Spectral Regularization Algorithms for Learning Large Incomplete Matrices'](https://web.stanford.edu/~hastie/Papers/mazumder10a.pdf).
+* 'SBiScale' - A sparse approach to scaling and centering, row-wise and column-wise. 
+
+This GitHub repo also includes:
+
 * Unit tests for SoftImpute.
 * Benchmarking for SoftImputeALS against GraphLab and the FancyImpute SoftImpute implementation.
 
