@@ -19,9 +19,9 @@ from sklearn.utils.extmath import randomized_svd
 from scipy.sparse import coo_matrix, csc_matrix, issparse, csr_matrix
 from sklearn.metrics import mean_squared_error
 
-from sparse_biscale import SBiScale
-from sparse_solver import Solver
-from splr_matrix import SPLR
+from .sparse_biscale import SBiScale
+from .sparse_solver import Solver
+from .splr_matrix import SPLR
     
 
 class SoftImpute(Solver):
@@ -119,7 +119,7 @@ class SoftImpute(Solver):
         row_ids, col_ids, _ = self.missing_mask
         x_svd = self.X_fill
         targets = zip(row_ids, col_ids)
-        n_preds = len(targets)
+        n_preds = len(list(targets))
         res = np.empty(n_preds)
 
         for idx, (r, c) in enumerate(targets):

@@ -106,7 +106,7 @@ class SBiScale(object):
         '''    
         self._add_variables(x)
         self._center_scale_I()
-        for i in xrange(self.maxit):
+        for i in range(self.maxit):
             # Centering
             ## Column mean
             if self.col_center:

@@ -19,9 +19,9 @@ from sklearn.utils.extmath import randomized_svd
 from scipy.sparse import coo_matrix, csc_matrix, issparse, csr_matrix
 from sklearn.metrics import mean_squared_error
 
-from sparse_biscale import SBiScale
-from sparse_solver import Solver
-from splr_matrix import SPLR
+from .sparse_biscale import SBiScale
+from .sparse_solver import Solver
+from .splr_matrix import SPLR
 from sklearn.base import TransformerMixin
     
 

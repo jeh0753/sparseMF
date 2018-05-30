@@ -15,7 +15,7 @@ from __future__ import absolute_import, print_function, division
 import numpy as np
 from six.moves import range
 from scipy.sparse import issparse, coo_matrix, csr_matrix
-from sparse_biscale import SBiScale
+from .sparse_biscale import SBiScale
 
 
 class Solver(object):

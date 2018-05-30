@@ -1,5 +1,5 @@
 import numpy as np
-from sparse_soft_impute import SoftImpute, SPLR
+from sparsemf import SoftImpute, SPLR
 from scipy.sparse import coo_matrix, csr_matrix, csc_matrix, lil_matrix
 from sklearn.utils.testing import assert_raises, assert_equal, assert_array_equal
 import unittest
